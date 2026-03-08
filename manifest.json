@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Super Cite Plugin",
+  "short_name": "Super Cite",
+  "version": "0.5",
+  "description": "Add a Super Cite button in Google Scholar to generate complete citations in APA, MLA, BibTeX and more.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://scholar.google.com/*",
+    "https://api.openalex.org/*",
+    "https://api.crossref.org/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://scholar.google.com/*"
+      ],
+      "js": [
+        "src/content.js"
+      ],
+      "css": [
+        "src/content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Super Cite",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}

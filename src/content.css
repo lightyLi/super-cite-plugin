@@ -1,0 +1,621 @@
+.super-cite-btn {
+  margin-left: 8px;
+  color: #1a73e8;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.super-cite-btn:hover {
+  text-decoration: underline;
+}
+
+.super-cite-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a73e8;
+  opacity: 0.95;
+}
+
+.super-cite-btn-label {
+  line-height: 1;
+}
+
+.super-cite-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2147483645;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.super-cite-modal {
+  width: min(960px, 94vw);
+  max-height: 86vh;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.super-cite-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.super-cite-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-right: 12px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.super-cite-close {
+  all: unset;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #5f6368;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.super-cite-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  width: fit-content;
+}
+
+.super-cite-header-btn {
+  border: 1px solid #dadce0;
+  background: #fff;
+  color: #202124;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.super-cite-settings-toggle {
+  all: unset;
+  font-size: 20px;
+  line-height: 1;
+  color: #5f6368;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.super-cite-settings-toggle:hover {
+  background: #eef1f4;
+  color: #202124;
+}
+
+.super-cite-close:hover {
+  background: #eef1f4;
+  color: #202124;
+}
+
+.super-cite-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+}
+
+.super-cite-settings {
+  border: 1px solid #ececec;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fbfbfb;
+  flex-direction: column;
+  gap: 8px;
+  display: none;
+}
+
+.super-cite-settings.open {
+  display: flex;
+}
+
+.super-cite-settings-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3c4043;
+}
+
+.super-cite-settings-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3c4043;
+  margin-top: 2px;
+}
+
+.super-cite-settings-formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.super-cite-format-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dadce0;
+  border-radius: 999px;
+  background: #fff;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: #3c4043;
+  cursor: pointer;
+}
+
+.super-cite-format-chip input {
+  margin: 0;
+}
+
+.super-cite-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.super-cite-setting-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #3c4043;
+  cursor: pointer;
+}
+
+.super-cite-settings-note {
+  font-size: 11px;
+  color: #5f6368;
+}
+
+.super-cite-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.super-cite-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.super-cite-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.super-cite-tab {
+  border: 1px solid #dadce0;
+  background: #fff;
+  color: #202124;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.super-cite-tab.active {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+.super-cite-output {
+  border: 1px solid #ececec;
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.super-cite-output-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.super-cite-output-item {
+  border: 1px solid #e6e6e6;
+  border-radius: 5px;
+  background: #fff;
+  padding: 5px 7px;
+}
+
+.super-cite-output-item-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3c4043;
+  margin-bottom: 2px;
+}
+
+.super-cite-output-line-text {
+  font-size: 12.5px;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.super-cite-output.loading {
+  min-height: 72px;
+  color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.super-cite-output.loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, #f4f5f7 8%, #eceff3 18%, #f4f5f7 33%);
+  background-size: 200% 100%;
+  animation: super-cite-skeleton 1.05s linear infinite;
+}
+
+@keyframes super-cite-skeleton {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+.super-cite-output.interactive {
+  cursor: pointer;
+}
+
+.super-cite-output.interactive:hover {
+  border-color: #d2e3fc;
+  background: #f5f9ff;
+}
+
+.super-cite-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.super-cite-action-btn {
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  background: #fff;
+  padding: 7px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.super-cite-action-btn.primary {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+
+.super-cite-status {
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.super-cite-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d7dbe0;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #5f6368;
+  background: #f6f8fa;
+  vertical-align: middle;
+}
+
+.super-cite-status.error {
+  color: #b3261e;
+}
+
+.super-cite-source-link {
+  color: #1a73e8;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.super-cite-tabs-empty {
+  font-size: 12px;
+  color: #5f6368;
+  padding: 6px 0;
+}
+
+.super-cite-tab-add {
+  border-style: dashed;
+  color: #0f6cbd;
+}
+
+.super-cite-tab-add:hover {
+  border-color: #0f6cbd;
+  background: #f3f8fe;
+}
+
+.super-cite-template-editor {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.super-cite-template-editor.open {
+  display: flex;
+}
+
+.super-cite-template-top {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.super-cite-template-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #202124;
+}
+
+.super-cite-template-subtitle {
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.super-cite-template-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.super-cite-template-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #3c4043;
+}
+
+.super-cite-template-field input,
+.super-cite-template-field select {
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  padding: 8px 9px;
+  font-size: 13px;
+  outline: none;
+}
+
+.super-cite-template-field input:focus,
+.super-cite-template-field select:focus {
+  border-color: #1a73e8;
+}
+
+.super-cite-template-workbench-new {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.super-cite-template-palette-bar {
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  background: #fcfcfc;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.super-cite-template-palette-bar .super-cite-template-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-direction: row;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.super-cite-template-palette-bar .super-cite-template-part {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 6px 10px;
+}
+
+.super-cite-template-palette-bar .super-cite-template-part small {
+  display: none;
+}
+
+.super-cite-template-lower {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: 12px;
+}
+
+.super-cite-template-panel {
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  background: #fcfcfc;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 180px;
+}
+
+.super-cite-template-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3c4043;
+}
+
+.super-cite-template-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  max-height: 280px;
+  padding-right: 4px;
+}
+
+.super-cite-template-part {
+  border: 1px solid #dadce0;
+  border-radius: 7px;
+  background: #fff;
+  text-align: left;
+  padding: 8px 9px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.super-cite-template-part span {
+  font-size: 12px;
+  color: #202124;
+  font-weight: 600;
+}
+
+.super-cite-template-part small {
+  font-size: 11px;
+  color: #5f6368;
+}
+
+.super-cite-template-part:hover {
+  border-color: #1a73e8;
+  background: #f6fafe;
+}
+
+.super-cite-template-part.empty {
+  opacity: 0.72;
+}
+
+.super-cite-template-canvas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: flex-start;
+  min-height: 158px;
+  padding: 8px;
+  border: 1px dashed #d0d7de;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.super-cite-template-canvas-empty {
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.super-cite-template-token {
+  border: 1px solid #d5dde6;
+  border-radius: 16px;
+  background: #f8fbff;
+  color: #202124;
+  padding: 6px 9px 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  cursor: grab;
+}
+
+.super-cite-template-token.dragging {
+  opacity: 0.55;
+}
+
+.super-cite-template-token-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f6cbd;
+  white-space: nowrap;
+}
+
+.super-cite-template-token-value {
+  font-size: 12px;
+  color: #3c4043;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.super-cite-template-token-remove {
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.super-cite-template-token-remove:hover {
+  color: #b3261e;
+}
+
+.super-cite-template-preview {
+  border: 1px solid #ececec;
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 40px;
+  flex: 1;
+}
+
+.super-cite-template-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 860px) {
+  .super-cite-template-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .super-cite-template-lower {
+    grid-template-columns: 1fr;
+  }
+}
