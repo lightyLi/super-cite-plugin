@@ -12,14 +12,272 @@ const SCORE = {
 };
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== 'SUPER_CITE_FETCH') return;
+  if (!message?.type) return;
 
-  enrichAndFormat(message.payload)
-    .then((data) => sendResponse({ ok: true, data }))
-    .catch((error) => sendResponse({ ok: false, error: error.message || String(error) }));
+  if (message.type === 'SUPER_CITE_FETCH') {
+    enrichAndFormat(message.payload)
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((error) => sendResponse({ ok: false, error: error.message || String(error) }));
+    return true;
+  }
 
-  return true;
+  if (message.type === 'SUPER_CITE_FETCH_FROM_TAB') {
+    fetchCitationFromTab(message.tabId)
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((error) => sendResponse({ ok: false, error: error.message || String(error) }));
+    return true;
+  }
+
+  return undefined;
 });
+
+async function fetchCitationFromTab(tabId) {
+  const seed = await extractPageSeedFromTab(tabId);
+  return enrichAndFormat(seed);
+}
+
+async function extractPageSeedFromTab(tabId) {
+  const result = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+      const byName = (name) => clean(document.querySelector(`meta[name="${name}"]`)?.getAttribute('content'));
+      const byProp = (prop) => clean(document.querySelector(`meta[property="${prop}"]`)?.getAttribute('content'));
+      const collectByName = (name) => Array.from(document.querySelectorAll(`meta[name="${name}"]`))
+        .map((el) => clean(el.getAttribute('content')))
+        .filter(Boolean);
+      const collectByProp = (prop) => Array.from(document.querySelectorAll(`meta[property="${prop}"]`))
+        .map((el) => clean(el.getAttribute('content')))
+        .filter(Boolean);
+      const textFromSelectors = (selectors) => {
+        for (const selector of selectors) {
+          const value = clean(document.querySelector(selector)?.textContent);
+          if (value) return value;
+        }
+        return '';
+      };
+      const attrFromSelectors = (selectors, attr) => {
+        for (const selector of selectors) {
+          const value = clean(document.querySelector(selector)?.getAttribute(attr));
+          if (value) return value;
+        }
+        return '';
+      };
+      const extractDateIso = (raw) => {
+        const text = clean(raw);
+        if (!text) return '';
+        const match = text.match(/\b((19|20)\d{2})[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])\b/);
+        if (match) return `${match[1]}-${match[3]}-${match[4]}`;
+        const parsed = Date.parse(text);
+        if (!Number.isNaN(parsed)) {
+          const dt = new Date(parsed);
+          const y = dt.getUTCFullYear();
+          const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(dt.getUTCDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+        return '';
+      };
+      const yearFromText = (text) => {
+        const match = clean(text).match(/\b(19|20)\d{2}\b/);
+        return match ? match[0] : '';
+      };
+      const extractDoi = (text) => {
+        const match = clean(text).match(/10\.\d{4,9}\/[\-._;()/:A-Z0-9]+/i);
+        return match ? match[0] : '';
+      };
+      const unique = (items) => [...new Set((items || []).map((item) => clean(item)).filter(Boolean))];
+      const normalizeJsonLdAuthor = (author) => {
+        if (!author) return [];
+        if (Array.isArray(author)) {
+          return author.flatMap((item) => normalizeJsonLdAuthor(item));
+        }
+        if (typeof author === 'string') return [clean(author)];
+        if (typeof author === 'object') {
+          const name = clean(author.name || author.alternateName || '');
+          return name ? [name] : [];
+        }
+        return [];
+      };
+      const collectJsonLdArticleNodes = () => {
+        const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+        const nodes = [];
+
+        for (const script of scripts) {
+          const raw = clean(script.textContent);
+          if (!raw) continue;
+          try {
+            const parsed = JSON.parse(raw);
+            const stack = Array.isArray(parsed) ? [...parsed] : [parsed];
+            while (stack.length) {
+              const item = stack.pop();
+              if (!item || typeof item !== 'object') continue;
+              if (Array.isArray(item)) {
+                stack.push(...item);
+                continue;
+              }
+              if (item['@graph'] && Array.isArray(item['@graph'])) {
+                stack.push(...item['@graph']);
+              }
+              const type = Array.isArray(item['@type']) ? item['@type'].join(',') : String(item['@type'] || '');
+              if (/article|newsarticle|blogposting/i.test(type)) {
+                nodes.push(item);
+              }
+            }
+          } catch (_error) {
+            // Ignore invalid JSON-LD blocks.
+          }
+        }
+        return nodes;
+      };
+
+      const host = location.hostname.toLowerCase();
+      const sourceUrl = location.href;
+      const jsonLdArticles = collectJsonLdArticleNodes();
+
+      const jsonLdTitle = clean(jsonLdArticles.find((item) => item.headline)?.headline || '');
+      const jsonLdAuthors = unique(jsonLdArticles.flatMap((item) => normalizeJsonLdAuthor(item.author)));
+      const jsonLdDate = extractDateIso(
+        jsonLdArticles.find((item) => item.datePublished)?.datePublished ||
+        jsonLdArticles.find((item) => item.dateCreated)?.dateCreated ||
+        ''
+      );
+      const jsonLdSite = clean(
+        jsonLdArticles.find((item) => item.publisher?.name)?.publisher?.name ||
+        jsonLdArticles.find((item) => item.isPartOf?.name)?.isPartOf?.name ||
+        ''
+      );
+
+      const title =
+        byName('citation_title') ||
+        byName('dc.title') ||
+        jsonLdTitle ||
+        byProp('og:title') ||
+        clean(document.title);
+
+      let authorNames = [
+        ...collectByName('citation_author'),
+        ...collectByName('dc.creator'),
+        ...collectByProp('article:author'),
+        ...jsonLdAuthors,
+        ...collectByName('author')
+      ].filter(Boolean);
+      let dateRaw =
+        byName('citation_publication_date') ||
+        byName('citation_date') ||
+        byName('dc.date') ||
+        byProp('article:published_time') ||
+        byProp('og:article:published_time') ||
+        attrFromSelectors(['time[datetime]', '[itemprop="datePublished"]'], 'datetime') ||
+        textFromSelectors(['time[datetime]', 'time[pubdate]', '[itemprop="datePublished"]']) ||
+        jsonLdDate ||
+        '';
+      let date = extractDateIso(dateRaw);
+
+      const urlDateMatch = sourceUrl.match(/\/((19|20)\d{2})[/-](0[1-9]|1[0-2])[/-](0[1-9]|[12]\d|3[01])\b/);
+      if (!date && urlDateMatch) {
+        date = `${urlDateMatch[1]}-${urlDateMatch[3]}-${urlDateMatch[4]}`;
+      }
+
+      let year = yearFromText(date) ||
+        yearFromText(dateRaw) ||
+        yearFromText(sourceUrl);
+
+      let container =
+        byName('citation_journal_title') ||
+        byName('citation_conference_title') ||
+        byName('dc.source') ||
+        byName('application-name') ||
+        jsonLdSite ||
+        byProp('og:site_name') ||
+        '';
+
+      // Site-specific fallbacks for common news/blog platforms.
+      if (host.includes('medium.com')) {
+        authorNames = authorNames.concat([
+          textFromSelectors(['a[rel="author"]']),
+          attrFromSelectors(['meta[name="author"]'], 'content')
+        ]);
+        container = container || 'Medium';
+      }
+
+      if (host.includes('nytimes.com')) {
+        authorNames = authorNames.concat([
+          textFromSelectors(['[itemprop="name"]', '[data-testid="byline"]'])
+        ]);
+      }
+
+      if (host.includes('reuters.com')) {
+        authorNames = authorNames.concat([
+          textFromSelectors(['[data-testid="Byline"]', '[class*="Byline"]'])
+        ]);
+      }
+
+      if (host.includes('cnn.com') || host.includes('bbc.com') || host.includes('theguardian.com')) {
+        authorNames = authorNames.concat([
+          textFromSelectors(['[rel="author"]', '[class*="byline"]', '[data-component="byline-block"]'])
+        ]);
+      }
+
+      if (host.includes('thehackernews.com')) {
+        authorNames = authorNames.concat([
+          textFromSelectors(['.author a', '.author'])
+        ]);
+        dateRaw = dateRaw || textFromSelectors(['.date']);
+        date = date || extractDateIso(dateRaw);
+        year = year || yearFromText(dateRaw);
+        container = container || 'The Hacker News';
+      }
+
+      const dedupAuthors = unique(authorNames)
+        .map((name) => name.replace(/^by\s+/i, '').trim())
+        .filter((name) => {
+          const lower = name.toLowerCase();
+          if (!lower) return false;
+          const containerLower = clean(container).toLowerCase();
+          if (containerLower && lower === containerLower) return false;
+          if (lower === 'by' || lower === 'staff') return false;
+          return true;
+        });
+
+      const doiRaw =
+        byName('citation_doi') ||
+        byName('dc.identifier') ||
+        byName('doi') ||
+        '';
+      const doi = extractDoi(doiRaw);
+
+      const metaRaw = clean(
+        [
+          title,
+          dedupAuthors.join(', '),
+          year,
+          date,
+          container,
+          doi,
+          sourceUrl
+        ].join(' | ')
+      );
+
+      return {
+        title,
+        authors: dedupAuthors.map((raw) => ({ raw })),
+        year,
+        date,
+        container,
+        sourceUrl,
+        metaRaw
+      };
+    }
+  });
+
+  const seed = result?.[0]?.result;
+  if (!seed || !seed.title) {
+    throw new Error('Unable to extract metadata from this page.');
+  }
+  return seed;
+}
+
 
 async function enrichAndFormat(seed) {
   const seedClean = normalizeSeed(seed);
@@ -87,6 +345,7 @@ function normalizeSeed(seed) {
     title: cleanText(seed?.title),
     authors: Array.isArray(seed?.authors) ? seed.authors : [],
     year: cleanText(seed?.year),
+    date: cleanText(seed?.date),
     container: cleanText(seed?.container),
     sourceUrl: cleanText(seed?.sourceUrl),
     metaRaw: cleanText(seed?.metaRaw)
@@ -215,6 +474,7 @@ function mergeRecord(seed, rec) {
     title: rec.title || seed.title || '',
     authors: rec.authors?.length ? rec.authors : normalizeSeedAuthors(seed.authors),
     year: rec.year || seed.year || '',
+    date: rec.date || seed.date || '',
     container: rec.container || seed.container || '',
     volume: rec.volume || '',
     issue: rec.issue || '',
@@ -258,6 +518,8 @@ function normalizeCrossref(item) {
 
   const title = Array.isArray(item.title) ? item.title[0] : '';
   const container = Array.isArray(item['container-title']) ? item['container-title'][0] : '';
+  const rawPage = cleanText(item.page);
+  const articleNumber = cleanText(item['article-number']);
   return {
     title: cleanText(title),
     authors: (item.author || []).map((author) => ({
@@ -265,10 +527,11 @@ function normalizeCrossref(item) {
       family: cleanText(author.family)
     })),
     year: extractYearFromCrossref(item),
+    date: extractDateFromCrossref(item),
     container: cleanText(container),
     volume: cleanText(item.volume),
     issue: cleanText(item.issue),
-    page: cleanText(item.page),
+    page: normalizePageField(rawPage, articleNumber),
     publisher: cleanText(item.publisher),
     doi: normalizeDoi(item.DOI),
     url: cleanText(item.URL),
@@ -295,6 +558,22 @@ function extractYearFromCrossref(item) {
   return '';
 }
 
+function extractDateFromCrossref(item) {
+  const parts = [
+    item?.published?.['date-parts']?.[0],
+    item?.issued?.['date-parts']?.[0],
+    item?.created?.['date-parts']?.[0]
+  ];
+  for (const dateParts of parts) {
+    if (!Array.isArray(dateParts) || !dateParts[0]) continue;
+    const year = String(dateParts[0]);
+    const month = String(dateParts[1] || 1).padStart(2, '0');
+    const day = String(dateParts[2] || 1).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return '';
+}
+
 function mapType(type) {
   if (!type) return 'article-journal';
   if (type.includes('book')) return 'book';
@@ -315,9 +594,23 @@ function mapCrossrefType(type) {
 }
 
 function normalizeSeedAuthors(authors) {
-  return (authors || []).map((author) => {
-    const raw = cleanText(author?.raw);
+  const expanded = expandRawAuthorNames(authors);
+
+  return expanded.map((rawName) => {
+    const raw = cleanText(rawName);
     if (!raw) return { given: '', family: '' };
+
+    if (isLikelyOrganizationAuthor(raw)) {
+      return { given: '', family: raw };
+    }
+
+    const commaMatch = raw.match(/^([^,]+),\s*(.+)$/);
+    if (commaMatch) {
+      return {
+        given: cleanText(commaMatch[2]),
+        family: cleanText(commaMatch[1])
+      };
+    }
 
     const parts = raw.split(/\s+/);
     if (parts.length < 2) return { given: '', family: raw };
@@ -329,11 +622,64 @@ function normalizeSeedAuthors(authors) {
   }).filter((author) => author.given || author.family);
 }
 
+function expandRawAuthorNames(authors) {
+  const rawList = (authors || [])
+    .map((author) => normalizeAuthorRawText(author?.raw))
+    .filter(Boolean);
+
+  const expanded = [];
+  for (const raw of rawList) {
+    const chunks = splitCompositeAuthorText(raw);
+    for (const chunk of chunks) {
+      const value = normalizeAuthorRawText(chunk);
+      if (value) expanded.push(value);
+    }
+  }
+
+  return [...new Set(expanded)];
+}
+
+function normalizeAuthorRawText(raw) {
+  return cleanText(raw)
+    .replace(/^written by\s+/i, '')
+    .replace(/^by\s+/i, '')
+    .replace(/\s*\([^)]*\)\s*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitCompositeAuthorText(raw) {
+  const text = cleanText(raw);
+  if (!text) return [];
+  if (isLikelyOrganizationAuthor(text)) return [text];
+
+  // Common byline delimiters on news/blog pages.
+  const parts = text
+    .replace(/\s+(?:and|&)\s+/gi, ';')
+    .replace(/\s*,\s*(?=[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g, ';')
+    .split(/[;|、，]/)
+    .map((item) => cleanText(item))
+    .filter(Boolean);
+
+  if (!parts.length) return [text];
+  if (parts.length === 1) return parts;
+
+  // Avoid over-splitting when fragments are obviously not person names.
+  const likelyPersonParts = parts.filter((name) => {
+    const words = name.split(/\s+/).filter(Boolean);
+    if (words.length < 2) return false;
+    if (isLikelyOrganizationAuthor(name)) return false;
+    return true;
+  });
+
+  return likelyPersonParts.length >= 2 ? likelyPersonParts : [text];
+}
+
 // Targets APA 7th journal-reference style in plain text output.
 function formatAPA(rec) {
   const parts = [];
   const authorsText = formatAuthorsAPA(rec.authors);
-  const yearText = `(${rec.year || 'n.d.'}).`;
+  const yearText = `(${formatApaDate(rec)}).`;
   const titleText = rec.title ? `${toSentenceCase(rec.title)}.` : '';
 
   parts.push(`${authorsText} ${yearText}`);
@@ -346,6 +692,50 @@ function formatAPA(rec) {
   else if (rec.url) parts.push(rec.url);
 
   return joinCitationParts(parts);
+}
+
+function formatApaDate(rec) {
+  const looksScholarly = Boolean(rec?.doi || rec?.volume || rec?.issue || rec?.page);
+  if (looksScholarly) {
+    return rec?.year || 'n.d.';
+  }
+  const fullDate = parseDateParts(rec?.date);
+  if (fullDate) {
+    const monthName = monthNameEn(fullDate.month);
+    if (monthName) return `${fullDate.year}, ${monthName} ${fullDate.day}`;
+  }
+  return rec?.year || 'n.d.';
+}
+
+function parseDateParts(rawDate) {
+  const raw = cleanText(rawDate);
+  if (!raw) return null;
+  const match = raw.match(/^((19|20)\d{2})-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/);
+  if (!match) return null;
+  return {
+    year: match[1],
+    month: Number(match[3]),
+    day: Number(match[4])
+  };
+}
+
+function monthNameEn(month) {
+  const names = [
+    '',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ];
+  return names[month] || '';
 }
 
 function formatMLA(rec) {
@@ -390,7 +780,10 @@ function formatIEEE(rec) {
   if (rec.container) segments.push(`${smartTitleCase(rec.container)},`);
   if (rec.volume) segments.push(`vol. ${rec.volume},`);
   if (rec.issue) segments.push(`no. ${rec.issue},`);
-  if (rec.page) segments.push(`pp. ${normalizePageRange(rec.page)},`);
+  if (rec.page) {
+    if (isLikelyArticleNumber(rec.page)) segments.push(`Art. no. ${rec.page},`);
+    else segments.push(`pp. ${normalizePageRange(rec.page)},`);
+  }
   if (rec.year) segments.push(`${rec.year},`);
 
   if (rec.doi) segments.push(`doi: ${rec.doi}.`);
@@ -628,6 +1021,17 @@ function pickFamilyName(displayName) {
   return parts[parts.length - 1] || '';
 }
 
+function isLikelyOrganizationAuthor(rawName) {
+  const raw = cleanText(rawName);
+  if (!raw) return false;
+  if (/[0-9&/]/.test(raw)) return true;
+  if (/\b(news|times|post|media|team|staff|agency|press|editorial)\b/i.test(raw)) return true;
+  if (/^(the)\b/i.test(raw) && raw.split(/\s+/).length >= 3) return true;
+  const words = raw.split(/\s+/).filter(Boolean);
+  if (words.length > 4) return true;
+  return false;
+}
+
 function normalizeName(name) {
   return cleanText(name)
     .toLowerCase()
@@ -652,6 +1056,7 @@ function joinPages(first, last) {
 
 function normalizePageRange(page) {
   const pages = splitPageRange(page);
+  if (pages.start && pages.end && pages.start === pages.end) return pages.start;
   if (pages.start && pages.end) return `${pages.start}-${pages.end}`;
   return pages.start || '';
 }
@@ -664,6 +1069,26 @@ function splitPageRange(page) {
   if (match) return { start: match[1], end: match[2] };
 
   return { start: raw, end: '' };
+}
+
+function normalizePageField(rawPage, articleNumber) {
+  const article = cleanText(articleNumber);
+  if (article) return article;
+
+  const page = cleanText(rawPage);
+  if (!page) return '';
+
+  const sameRange = page.match(/^([A-Za-z]?\d+)\s*[-–—]\s*\1$/);
+  if (sameRange) return sameRange[1];
+  return page;
+}
+
+function isLikelyArticleNumber(value) {
+  const text = cleanText(value);
+  if (!text) return false;
+  if (/^e\d{4,}$/i.test(text)) return true;
+  if (/^\d{5,}$/.test(text)) return true;
+  return false;
 }
 
 function toSentenceCase(text) {
@@ -686,7 +1111,10 @@ function buildApaSourceSegment(rec) {
     pieces.push(`(${rec.issue})`);
   }
 
-  if (rec.page) pieces.push(normalizePageRange(rec.page));
+  if (rec.page) {
+    if (isLikelyArticleNumber(rec.page)) pieces.push(`Article ${rec.page}`);
+    else pieces.push(normalizePageRange(rec.page));
+  }
   return `${pieces.join(', ')}.`;
 }
 
@@ -696,7 +1124,10 @@ function buildMlaContainerSegment(rec) {
   if (rec.volume) pieces.push(`vol. ${rec.volume}`);
   if (rec.issue) pieces.push(`no. ${rec.issue}`);
   if (rec.year) pieces.push(rec.year);
-  if (rec.page) pieces.push(`pp. ${normalizePageRange(rec.page)}`);
+  if (rec.page) {
+    if (isLikelyArticleNumber(rec.page)) pieces.push(`article ${rec.page}`);
+    else pieces.push(`pp. ${normalizePageRange(rec.page)}`);
+  }
 
   if (!pieces.length) return '';
   return `${pieces.join(', ')}.`;

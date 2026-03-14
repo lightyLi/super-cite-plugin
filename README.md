@@ -2,8 +2,9 @@
 
 Chrome MV3 extension that adds a `Super Cite` button next to Google Scholar's `Cite` action.
 
-## Features (v0.5)
+## Features (v0.7)
 - Injects `Super Cite` in each Scholar result item.
+- Supports browser action popup (left-click extension icon) to cite current page directly.
 - Extracts title/authors/year/container from current Scholar entry.
 - Enriches metadata via:
   - OpenAlex API
@@ -34,7 +35,7 @@ Chrome MV3 extension that adds a `Super Cite` button next to Google Scholar's `C
 - If external APIs return no strong match, plugin falls back to Scholar-only metadata.
 - No API key is required for current OpenAlex/Crossref integration.
 
-## Release Notes (0.5)
+## Release Notes (0.7)
 - Updated extension package metadata and icons for publishing readiness.
 - Improved citation modal UI and interaction spacing.
 - Added Scholar-like icon in the `Super Cite` entry.

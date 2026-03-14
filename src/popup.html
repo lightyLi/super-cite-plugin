@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Super Cite</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup">
+      <header class="popup-header">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <rect x="1.5" y="1.5" width="21" height="21" rx="6"></rect>
+              <rect class="brand-icon-paper" x="6" y="4.8" width="12" height="14.5" rx="2.4"></rect>
+              <rect class="brand-icon-ink" x="8.2" y="8" width="2.2" height="5.6" rx="1.1"></rect>
+              <rect class="brand-icon-ink" x="13.6" y="8" width="2.2" height="5.6" rx="1.1"></rect>
+            </svg>
+          </span>
+          <h1>Super Cite</h1>
+        </div>
+        <button id="refreshBtn" type="button" class="btn btn-refresh">Refresh</button>
+      </header>
+
+      <section class="card source-card">
+        <div class="section-kicker">Source</div>
+        <div id="title" class="title">Loading current page...</div>
+        <div id="meta" class="meta"></div>
+      </section>
+
+      <section class="card citation-card">
+        <label for="formatSelect" class="section-kicker">Citation Format</label>
+        <div class="citation-toolbar">
+          <select id="formatSelect" class="control control-select"></select>
+          <div class="actions">
+            <button id="copyBtn" type="button" class="btn btn-primary">Copy</button>
+            <button id="copyAndCloseBtn" type="button" class="btn btn-secondary">Copy & Close</button>
+          </div>
+        </div>
+
+        <textarea id="output" class="control control-output" readonly spellcheck="false"></textarea>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
